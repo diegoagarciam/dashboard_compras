@@ -203,7 +203,7 @@ select.status-select.atendido{color:#1d7a42;border-color:#b6e6c8;background:#e6f
     <div>
       <h1>MASIA GROUP — Dashboard de Compras</h1>
       <div class="sub">Filiales → Masia Export → Masia USA → Fabricantes</div>
-      <div id="appVersion" style="font-size:11px;font-weight:700;background:rgba(255,255,255,.15);display:inline-block;padding:2px 8px;border-radius:6px;margin-top:4px;">Versión 2026-08-26-1</div>
+      <div id="appVersion" style="font-size:11px;font-weight:700;background:rgba(255,255,255,.15);display:inline-block;padding:2px 8px;border-radius:6px;margin-top:4px;">Versión 2026-08-26-2</div>
     </div>
   </div>
   <div class="meta">
@@ -566,31 +566,31 @@ select.status-select.atendido{color:#1d7a42;border-color:#b6e6c8;background:#e6f
             <option>Venezuela</option><option>México</option><option>Colombia</option><option>USA</option><option>Brasil</option><option>España</option>
           </select>
         </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">El número de PO y el fabricante se detectan automáticamente del PDF con IA.</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">El número de PO y el fabricante se detectan automáticamente del PDF.</div>
         <label class="file-drop" id="poDrop">📄 Arrastra aquí el PDF de la orden, o haz clic para buscarlo
           <input type="file" id="poPdf" accept="application/pdf">
           <div class="fname" id="poFname"></div>
         </label>
-        <button class="btn-submit" id="btnSubirPO" style="width:100%;margin-top:12px;">Cargar y leer con IA</button>
+        <button class="btn-submit" id="btnSubirPO" style="width:100%;margin-top:12px;">Cargar y procesar</button>
         <div class="alert-msg" id="poMsg"></div>
       </div>
 
       <div class="card">
         <h3><span class="n">2</span> Cargar Factura del Proveedor</h3>
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">El número de factura del proveedor y el N° de PO al que pertenece se detectan automáticamente del PDF con IA.</div>
-        <div class="form-field" style="margin-bottom:10px;"><label for="fpOc">N° de orden (PO) — solo si la IA no lo detecta</label><input type="text" id="fpOc" placeholder="Ej: PO-4521"></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">El número de factura del proveedor y el N° de PO al que pertenece se detectan automáticamente del PDF. Proveedores soportados: Keltec, Fuchs y Camozzi — si es otro proveedor, avisa para agregar su plantilla.</div>
+        <div class="form-field" style="margin-bottom:10px;"><label for="fpOc">N° de orden (PO) — solo si no se detecta automáticamente</label><input type="text" id="fpOc" placeholder="Ej: PO-4521"></div>
         <div class="form-field" style="margin-bottom:10px;"><label for="fpProveedor">Proveedor (opcional)</label><input type="text" id="fpProveedor" placeholder="Nombre del proveedor"></div>
         <label class="file-drop" id="fpDrop">📄 Arrastra aquí el PDF de la factura, o haz clic para buscarlo
           <input type="file" id="fpPdf" accept="application/pdf">
           <div class="fname" id="fpFname"></div>
         </label>
-        <button class="btn-submit" id="btnSubirFP" style="width:100%;margin-top:12px;">Cargar y leer con IA</button>
+        <button class="btn-submit" id="btnSubirFP" style="width:100%;margin-top:12px;">Cargar y procesar</button>
         <div class="alert-msg" id="fpMsg"></div>
       </div>
 
       <div class="card">
         <h3><span class="n">3</span> Cargar Factura a la Filial</h3>
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">La IA detecta los códigos despachados, el medio de envío (contenedor, UPS, Ultrabox, aéreo, etc.) y el número de rastreo. A qué orden(es) de compra pertenece cada código se asigna automáticamente (el stock más antiguo sin facturar primero) — cada factura genera su propia importación.</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Se detectan automáticamente los códigos despachados, el medio de envío (contenedor, UPS, Ultrabox, aéreo, etc.) y el número de rastreo. A qué orden(es) de compra pertenece cada código se asigna automáticamente (el stock más antiguo sin facturar primero) — cada factura genera su propia importación.</div>
         <div class="form-field" style="margin-bottom:10px;">
           <label for="ffFilial">Filial</label>
           <select id="ffFilial">
@@ -602,7 +602,7 @@ select.status-select.atendido{color:#1d7a42;border-color:#b6e6c8;background:#e6f
           <input type="file" id="ffPdf" accept="application/pdf">
           <div class="fname" id="ffFname"></div>
         </label>
-        <button class="btn-submit" id="btnSubirFF" style="width:100%;margin-top:12px;">Cargar y leer con IA</button>
+        <button class="btn-submit" id="btnSubirFF" style="width:100%;margin-top:12px;">Cargar y procesar</button>
         <div class="alert-msg" id="ffMsg"></div>
       </div>
     </div>
@@ -3252,7 +3252,7 @@ function mpListarGestion(){
   return { ok:true, solicitudes: [...mpDB().solicitudes].sort((a,b)=> a.fecha_solicitud<b.fecha_solicitud?1:-1) };
 }
 
-const MP_ADVERTENCIA = 'Modo de prueba local: no está conectado a la IA ni a OneDrive todavía. El documento queda registrado (sin PDF real ni lectura automática) — agrega los ítems a mano con el ícono ✎ en la tabla.';
+const MP_ADVERTENCIA = 'Modo de prueba local: no está conectado al backend real todavía, así que no puede leer el PDF. El documento queda registrado (sin lectura automática) — agrega los ítems a mano con el ícono ✎ en la tabla.';
 function mpSubirOrdenPO(p){
   if(!p.filial_destino) return { ok:false, mensaje:'Falta indicar el país (filial) de destino.' };
   const db = mpDB();
@@ -3260,7 +3260,7 @@ function mpSubirOrdenPO(p){
   const fabricante = '(fabricante sin identificar — corrígelo con ✎)';
   db.ordenesFabrica.push({ numero_oc, fabricante, filial_destino:p.filial_destino, fecha_carga:new Date().toISOString(), pdf_url_oc:'', pdf_nombre_oc:p.pdf_nombre||'', facturas_proveedor:[], facturas_filial:[], pedido:{}, recibido:{}, despachado:{} });
   mpSave(db);
-  return { ok:true, numero_oc, lineas:[], advertencia:MP_ADVERTENCIA+' No se pudo detectar el número de PO ni el fabricante (modo local sin IA) — se asignó un identificador temporal ('+numero_oc+'); corrígelos con el ícono ✎.' };
+  return { ok:true, numero_oc, lineas:[], advertencia:MP_ADVERTENCIA+' No se pudo detectar el número de PO ni el fabricante (modo local) — se asignó un identificador temporal ('+numero_oc+'); corrígelos con el ícono ✎.' };
 }
 function mpActualizarEncabezadoOrden(p){
   const db = mpDB();
@@ -3275,8 +3275,8 @@ function mpActualizarEncabezadoOrden(p){
   return { ok:true };
 }
 function mpSubirFacturaProveedor(p){
-  // El modo local no tiene IA para detectar el N° de PO desde el PDF, así que aquí sí depende del campo manual.
-  if(!p.numero_oc) return { ok:false, mensaje:'No se pudo identificar a qué orden pertenece esta factura (modo local sin IA). Indica el número de PO en el campo correspondiente.' };
+  // El modo local no puede leer el N° de PO desde el PDF, así que aquí sí depende del campo manual.
+  if(!p.numero_oc) return { ok:false, mensaje:'No se pudo identificar a qué orden pertenece esta factura (modo local). Indica el número de PO en el campo correspondiente.' };
   const db = mpDB();
   const o = db.ordenesFabrica.find(x=>x.numero_oc===p.numero_oc);
   if(!o) return { ok:false, mensaje:'No existe ninguna orden con el número '+p.numero_oc+'. Cárgala primero.' };
@@ -3303,14 +3303,15 @@ function mpCalcularEstadoTiempo(fechaReferencia, medioEnvio){
 function mpSubirFacturaFilial(p){
   if(!p.filial) return { ok:false, mensaje:'Falta indicar la filial destino.' };
   const db = mpDB();
-  // Modo local sin IA: no se puede leer el PDF, así que no se detectan códigos, medio de
-  // envío ni número de rastreo automáticamente — la importación queda registrada vacía,
-  // lista para revisarse a mano una vez conectes la IA real.
+  // Modo local: no se puede leer el PDF real (eso solo corre en el backend de Apps
+  // Script), así que no se detectan códigos, medio de envío ni número de rastreo
+  // automáticamente — la importación queda registrada vacía, lista para revisarse a
+  // mano una vez pruebes contra el backend real.
   db.importacionesAuto = db.importacionesAuto || [];
   const id_factura = 'FF-'+String(p.filial).slice(0,3).toUpperCase()+'-'+Date.now();
   db.importacionesAuto.push({ id:id_factura, filial:p.filial, fecha_creacion:new Date().toISOString(), medio_envio:'', numero_rastreo:'', ocs:[], fecha_referencia:new Date().toISOString() });
   mpSave(db);
-  return { ok:true, id_factura, lineas:[], advertencia: MP_ADVERTENCIA + ' La importación se registró sin códigos asignados (modo local sin IA); revísala a mano o conecta la IA real para que la asignación automática funcione.' };
+  return { ok:true, id_factura, lineas:[], advertencia: MP_ADVERTENCIA + ' La importación se registró sin códigos asignados (modo local); revísala a mano o pruébala contra el backend real para que la asignación automática funcione.' };
 }
 function mpListarImportaciones(){
   const db = mpDB();
@@ -3670,7 +3671,7 @@ function renderGestion(){
 document.getElementById('btnRefrescarGestion').addEventListener('click', cargarGestion);
 
 /* ============================================================
-   9. SEGUIMIENTO DE ÓRDENES A FÁBRICA (PDF + IA + OneDrive)
+   9. SEGUIMIENTO DE ÓRDENES A FÁBRICA (PDF, lectura por patrón fijo)
    ============================================================ */
 function leerArchivoBase64(file){
   return new Promise((resolve, reject)=>{
@@ -3727,14 +3728,14 @@ async function subirDocumento({btnId, msgId, pdfInputId, accion, payload, campoR
     msg.textContent = 'Selecciona el PDF antes de cargar.';
     return;
   }
-  btn.disabled = true; btn.textContent = 'Subiendo y leyendo con IA…';
+  btn.disabled = true; btn.textContent = 'Subiendo y procesando…';
   try{
     const pdf_base64 = await leerArchivoBase64(pdfInput.files[0]);
     const res = await apiPost(accion, Object.assign({}, payload, {pdf_base64, pdf_nombre: pdfInput.files[0].name, usuario: AUTH.usuario||''}));
     if(res.ok){
       msg.classList.add('show','ok');
       const nLineas = (res.lineas||[]).length;
-      msg.textContent = `Documento cargado con éxito. La IA identificó ${nLineas} ítem${nLineas===1?'':'s'}.` + (res.advertencia? ' ' : '');
+      msg.textContent = `Documento cargado con éxito. Se identificaron ${nLineas} ítem${nLineas===1?'':'s'}.` + (res.advertencia? ' ' : '');
       if(res.advertencia){
         const warn = document.createElement('div');
         warn.className = 'ai-warning';
@@ -3751,7 +3752,7 @@ async function subirDocumento({btnId, msgId, pdfInputId, accion, payload, campoR
     msg.classList.add('show','err');
     msg.textContent = 'No se pudo cargar el documento: ' + err.message;
   } finally {
-    btn.disabled = false; btn.textContent = 'Cargar y leer con IA';
+    btn.disabled = false; btn.textContent = 'Cargar y procesar';
   }
 }
 
@@ -3763,8 +3764,8 @@ document.getElementById('btnSubirPO').addEventListener('click', ()=>{
 document.getElementById('btnSubirFP').addEventListener('click', ()=>{
   const numero_oc = document.getElementById('fpOc').value.trim();
   const proveedor = document.getElementById('fpProveedor').value.trim();
-  // El N° de PO ya no es obligatorio aquí: la IA lo detecta del PDF. El campo queda como respaldo
-  // por si la IA no logra identificarlo (el backend avisa con una advertencia cuando eso pasa).
+  // El N° de PO ya no es obligatorio aquí: se detecta del PDF automáticamente. El campo queda como
+  // respaldo por si no se logra identificar (el backend avisa con una advertencia cuando eso pasa).
   subirDocumento({btnId:'btnSubirFP', msgId:'fpMsg', pdfInputId:'fpPdf', accion:'subirFacturaProveedor',
     payload:{numero_oc, proveedor}, campoRequerido: ''});
 });
@@ -3815,7 +3816,7 @@ function renderSeguimiento(){
   ordenesFabricaCache
     .filter(o=>(fFab==='__ALL__'||o.fabricante===fFab) && (fFil==='__ALL__'||o.filial_destino===fFil))
     .forEach(o=>{
-      // Los PDF ya no se guardan (solo se leen con IA y se descartan); se muestra el nombre como referencia.
+      // Los PDF ya no se guardan (solo se procesan y se descartan); se muestra el nombre como referencia.
       const docs = [`PO: ${o.pdf_nombre_oc||'—'}`]
         .concat((o.facturas_proveedor||[]).map((f,i)=>`Fact.Prov ${i+1}${f.numero_factura_proveedor?' ('+f.numero_factura_proveedor+')':''}`))
         .concat((o.facturas_filial||[]).map((f,i)=>`Fact.Filial ${i+1}`))
