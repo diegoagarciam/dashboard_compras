@@ -3182,7 +3182,7 @@ loadImportaciones();
 
 // >>> Pega aquí la URL de tu Web App de Google Apps Script (ver guía de configuración) <<<
 const CONFIG = {
-  API_URL: 'PEGA_AQUI_TU_URL_DE_APPS_SCRIPT'
+  API_URL: 'https://script.google.com/macros/s/AKfycbzbnYeV3uEmkb0yPeGlK4sEKfMYjm8PbJHr-UozrVva1aXJUwZizBhz2L0YHevVYMwl-Q/exec'
 };
 
 let AUTH = { logged:false, usuario:null, nombre:null };
