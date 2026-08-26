@@ -178,6 +178,9 @@ select.status-select.atendido{color:#1d7a42;border-color:#b6e6c8;background:#e6f
 .file-drop.dragover{border-color:var(--navy);background:#eef2f9;color:var(--navy);border-style:solid;}
 .file-drop input{display:none;}
 .file-drop .fname{font-size:11.5px;color:var(--navy);font-weight:600;margin-top:4px;word-break:break-all;}
+.file-drop .fname:not(:empty){display:inline-flex;align-items:center;gap:6px;}
+.file-drop .fname-clear{background:#fff;border:1px solid var(--border);color:var(--red);border-radius:50%;width:16px;height:16px;line-height:1;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.file-drop .fname-clear:hover{background:var(--red);color:#fff;border-color:var(--red);}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block;vertical-align:middle;}
 .dot.verde{background:var(--green);}
 .dot.amarillo{background:var(--amber);}
@@ -203,7 +206,7 @@ select.status-select.atendido{color:#1d7a42;border-color:#b6e6c8;background:#e6f
     <div>
       <h1>MASIA GROUP — Dashboard de Compras</h1>
       <div class="sub">Filiales → Masia Export → Masia USA → Fabricantes</div>
-      <div id="appVersion" style="font-size:11px;font-weight:700;background:rgba(255,255,255,.15);display:inline-block;padding:2px 8px;border-radius:6px;margin-top:4px;">Versión 2026-08-26-2</div>
+      <div id="appVersion" style="font-size:11px;font-weight:700;background:rgba(255,255,255,.15);display:inline-block;padding:2px 8px;border-radius:6px;margin-top:4px;">Versión 2026-08-26-4</div>
     </div>
   </div>
   <div class="meta">
@@ -628,11 +631,12 @@ select.status-select.atendido{color:#1d7a42;border-color:#b6e6c8;background:#e6f
           <thead><tr>
             <th>N° OC</th><th>Fabricante</th><th>País</th><th>Código</th><th>Descripción</th>
             <th>Pedido</th><th>Recibido (prov.)</th><th>Despachado (filial)</th>
-            <th>Pendiente prov.</th><th>En stock sin facturar</th><th>Status</th><th>Documentos</th>
+            <th>Pendiente prov.</th><th>En stock sin facturar</th><th>Status</th><th>Documentos</th><th>Acciones</th>
           </tr></thead>
-          <tbody id="seguimientoBody"><tr><td colspan="12" style="text-align:center;color:var(--text-muted);">Cargando…</td></tr></tbody>
+          <tbody id="seguimientoBody"><tr><td colspan="13" style="text-align:center;color:var(--text-muted);">Cargando…</td></tr></tbody>
         </table>
       </div>
+      <button class="reset-btn" id="btnExportSeguimiento" style="margin-top:10px;">⬇ Exportar a Excel</button>
     </div>
 
     <div class="info-note">
@@ -3331,6 +3335,20 @@ function mpActualizarLineaManual(p){
   mpSave(db);
   return { ok:true };
 }
+function mpEliminarOrdenFabrica(p){
+  const db = mpDB();
+  const numero_oc = String(p.numero_oc||'').trim();
+  const idx = db.ordenesFabrica.findIndex(x=>x.numero_oc===numero_oc);
+  if(idx===-1) return { ok:false, mensaje:'No se encontró la orden '+numero_oc+'.' };
+  db.ordenesFabrica.splice(idx,1);
+  // También se quitan (en modo local) las importaciones automáticas que hubieran quedado ligadas a esta OC.
+  db.importacionesAuto = (db.importacionesAuto||[]).map(im=>{
+    if(Array.isArray(im.ocs)) im.ocs = im.ocs.filter(x=>x.numero_oc!==numero_oc);
+    return im;
+  }).filter(im=>!Array.isArray(im.ocs) || im.ocs.length>0);
+  mpSave(db);
+  return { ok:true, mensaje:'Se eliminó la orden '+numero_oc+' (modo local).' };
+}
 function mpListarOrdenesFabrica(){
   return mpDB().ordenesFabrica.map(o=>{
     const codigos = Array.from(new Set([].concat(Object.keys(o.pedido),Object.keys(o.recibido),Object.keys(o.despachado))));
@@ -3355,6 +3373,7 @@ function mockApiPost(action, payload){
   if(action==='actualizarStatus') return mpActualizarStatus(payload);
   if(action==='subirOrdenPO') return mpSubirOrdenPO(payload);
   if(action==='actualizarEncabezadoOrden') return mpActualizarEncabezadoOrden(payload);
+  if(action==='eliminarOrdenFabrica') return mpEliminarOrdenFabrica(payload);
   if(action==='subirFacturaProveedor') return mpSubirFacturaProveedor(payload);
   if(action==='subirFacturaFilial') return mpSubirFacturaFilial(payload);
   if(action==='actualizarLineaManual') return mpActualizarLineaManual(payload);
@@ -3684,10 +3703,31 @@ function leerArchivoBase64(file){
     reader.readAsDataURL(file);
   });
 }
+function fnameSetArchivo(fname, nombre){
+  fname.innerHTML = '';
+  if(!nombre) return;
+  const txt = document.createElement('span');
+  txt.textContent = nombre;
+  const btnX = document.createElement('button');
+  btnX.type = 'button';
+  btnX.className = 'fname-clear';
+  btnX.title = 'Quitar este archivo';
+  btnX.textContent = '×';
+  fname.appendChild(txt);
+  fname.appendChild(btnX);
+}
 function conectarFileDrop(dropId, inputId, fnameId){
   const drop = document.getElementById(dropId), input = document.getElementById(inputId), fname = document.getElementById(fnameId);
   input.addEventListener('change', ()=>{
-    fname.textContent = input.files[0] ? input.files[0].name : '';
+    fnameSetArchivo(fname, input.files[0] ? input.files[0].name : '');
+  });
+  // Clic en la "×" quita el archivo seleccionado sin abrir el buscador de archivos
+  // (se detiene la propagación para que el <label> no reabra el diálogo).
+  fname.addEventListener('click', e=>{
+    if(!e.target.classList.contains('fname-clear')) return;
+    e.preventDefault(); e.stopPropagation();
+    input.value = '';
+    fnameSetArchivo(fname, '');
   });
   // Permite arrastrar y soltar el PDF directamente sobre el recuadro, además de poder buscarlo con clic.
   ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev, e=>{
@@ -3707,7 +3747,7 @@ function conectarFileDrop(dropId, inputId, fnameId){
         input.files = dt.files;
       }
     }catch(err){ /* algunos navegadores/entornos no permiten reasignar files; el nombre igual se muestra */ }
-    fname.textContent = file.name;
+    fnameSetArchivo(fname, file.name);
   });
 }
 conectarFileDrop('poDrop','poPdf','poFname');
@@ -3796,10 +3836,10 @@ function poblarSelectDesde(id, valores){
 }
 async function cargarSeguimiento(){
   const tbody = document.getElementById('seguimientoBody');
-  tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--text-muted);">Cargando…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:var(--text-muted);">Cargando…</td></tr>';
   const res = await apiListarOrdenesFabrica();
   if(!res.ok){
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--red);">${res.mensaje||'No se pudo cargar la información.'}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:var(--red);">${res.mensaje||'No se pudo cargar la información.'}</td></tr>`;
     return;
   }
   ordenesFabricaCache = res.ordenes || [];
@@ -3826,7 +3866,7 @@ function renderSeguimiento(){
         filas.push({o, l, docs});
       });
     });
-  if(!filas.length){ tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--text-muted);">No hay órdenes cargadas todavía.</td></tr>'; return; }
+  if(!filas.length){ tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:var(--text-muted);">No hay órdenes cargadas todavía.</td></tr>'; return; }
   tbody.innerHTML = filas.map(({o,l,docs})=>`<tr>
     <td><b>${o.numero_oc}</b> <button class="edit-cant" data-encoc="${o.numero_oc}" data-encfab="${(o.fabricante||'').replace(/"/g,'&quot;')}" data-encfil="${o.filial_destino||''}" data-enccampo="numero_oc" title="Corregir número de PO">✎</button></td>
     <td>${o.fabricante} <button class="edit-cant" data-encoc="${o.numero_oc}" data-encfab="${(o.fabricante||'').replace(/"/g,'&quot;')}" data-encfil="${o.filial_destino||''}" data-enccampo="fabricante" title="Corregir fabricante">✎</button></td>
@@ -3838,6 +3878,7 @@ function renderSeguimiento(){
     <td>${l.pendiente_proveedor}</td><td>${l.en_stock_sin_facturar}</td>
     <td><span class="badge ${STATUS_SEG_BADGE[l.status]||''}">${l.status}</span></td>
     <td style="font-size:11px;">${docs}</td>
+    <td><button class="edit-cant" data-delete-oc="${o.numero_oc}" title="Eliminar esta orden completa (no se puede deshacer)" style="color:var(--red);">🗑</button></td>
   </tr>`).join('');
   tbody.querySelectorAll('.edit-cant[data-tipo]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
@@ -3866,7 +3907,38 @@ function renderSeguimiento(){
       else alert('No se pudo corregir: ' + (res.mensaje||'error desconocido.'));
     });
   });
+  tbody.querySelectorAll('[data-delete-oc]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const numero_oc = btn.dataset.deleteOc;
+      if(!confirm(`¿Eliminar por completo la orden ${numero_oc}? Esto borra la orden, sus líneas, y las facturas de proveedor/filial vinculadas a ella. No se puede deshacer.`)) return;
+      btn.disabled = true;
+      const res = await apiPost('eliminarOrdenFabrica', {numero_oc});
+      if(res.ok){ cargarSeguimiento(); renderImportaciones(); }
+      else { alert('No se pudo eliminar: ' + (res.mensaje||'error desconocido.')); btn.disabled = false; }
+    });
+  });
 }
+function exportarSeguimientoExcel(){
+  const filas = [];
+  ordenesFabricaCache.forEach(o=>{
+    const lineas = (o.lineas&&o.lineas.length) ? o.lineas : [{codigo:'', descripcion:'', cantidad_pedida:0, cantidad_recibida:0, cantidad_despachada:0, pendiente_proveedor:0, en_stock_sin_facturar:0, status:''}];
+    lineas.forEach(l=>{
+      filas.push({
+        'N° OC': o.numero_oc, 'Fabricante': o.fabricante, 'País': o.filial_destino,
+        'Código': l.codigo, 'Descripción': l.descripcion,
+        'Pedido': l.cantidad_pedida, 'Recibido (prov.)': l.cantidad_recibida, 'Despachado (filial)': l.cantidad_despachada,
+        'Pendiente prov.': l.pendiente_proveedor, 'En stock sin facturar': l.en_stock_sin_facturar, 'Status': l.status,
+        'Fecha carga OC': o.fecha_carga ? new Date(o.fecha_carga).toISOString().slice(0,10) : ''
+      });
+    });
+  });
+  if(!filas.length){ alert('No hay órdenes cargadas para exportar.'); return; }
+  const ws = XLSX.utils.json_to_sheet(filas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Ordenes de Compra');
+  XLSX.writeFile(wb, `Ordenes_Compra_Masia_${fmtDate(TODAY)}.xlsx`);
+}
+document.getElementById('btnExportSeguimiento').addEventListener('click', exportarSeguimientoExcel);
 ['segFabricante','segFilial','segStatus'].forEach(id=>document.getElementById(id).addEventListener('change', renderSeguimiento));
 document.getElementById('btnRefrescarSeguimiento').addEventListener('click', renderImportaciones);
 
